@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, GameLogEntry, NarrativeChoice } from './types';
 import { PROBLEMS } from './problems';
 import Terminal from './components/Terminal';
@@ -12,9 +12,9 @@ const App: React.FC = () => {
     currentHintLevel: 0,
     isChoiceMode: false,
     log: [
-      { type: 'system', text: '--- SYSTEM INITIALIZED: PROCENT-PARADOXEN v4.0 ---' },
+      { type: 'system', text: '--- SYSTEM INITIALIZED: PROCENT-PARADOXEN v5.0 ---' },
       { type: 'system', text: 'LOGIC-RUNNER DETECTED. Status: Infiltrating the Neural Core.' },
-      { type: 'system', text: 'Ledtråds-motor aktiverad: Tre nivåer av assistans tillgängliga.' },
+      { type: 'system', text: 'HUD-synkronisering: 100%. Kraft-monitor: Aktiv.' },
       { type: 'system', text: '--------------------------------------------------' }
     ],
     isGameOver: false,
@@ -22,6 +22,26 @@ const App: React.FC = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isScorePulsing, setIsScorePulsing] = useState(false);
+  const [scoreChange, setScoreChange] = useState<number | null>(null);
+  const prevScore = useRef(state.score);
+
+  // Hantera poängförändrings-animation
+  useEffect(() => {
+    const diff = state.score - prevScore.current;
+    if (diff !== 0) {
+      setScoreChange(diff);
+      setIsScorePulsing(true);
+      
+      const timer = setTimeout(() => {
+        setIsScorePulsing(false);
+        setScoreChange(null);
+      }, 1500);
+      
+      prevScore.current = state.score;
+      return () => clearTimeout(timer);
+    }
+  }, [state.score]);
 
   const addLog = useCallback((text: string, type: GameLogEntry['type'] = 'narrative') => {
     setState(prev => ({
@@ -53,7 +73,7 @@ const App: React.FC = () => {
 
     setIsLoading(true);
     const cost = nextLevel === 1 ? 2 : nextLevel === 2 ? 5 : 10;
-    addLog(`[ HÄMTAR HACKER-DATA NIVÅ ${nextLevel}/3... KOSTNAD: ${cost} KRAFT ]`, 'input');
+    addLog(`[ HÄMTAR HACKER-DATA NIVÅ ${nextLevel}/3... ]`, 'input');
     
     const currentProblem = PROBLEMS[state.currentProblemIndex];
     const hint = await getHint(currentProblem.mathQuestion, nextLevel);
@@ -127,7 +147,7 @@ const App: React.FC = () => {
         ...prev,
         currentProblemIndex: nextIndex,
         currentChoiceIndex: 0,
-        currentHintLevel: 0, // Återställ ledtrådar för nytt problem
+        currentHintLevel: 0,
         isChoiceMode: false,
         score: prev.score + 10,
         log: [
@@ -138,7 +158,6 @@ const App: React.FC = () => {
       }));
     } else {
       addLog("SYSTEM ÅTERSTÄLLT! Du har nått hjärtat av simuleringen. W!", 'success');
-      addLog(`Din slutpoäng: ${state.score + 10} | Rank: ELITE LOGIC-RUNNER`, 'system');
       setState(prev => ({ ...prev, currentProblemIndex: PROBLEMS.length, isGameOver: true }));
     }
     setIsLoading(false);
@@ -169,9 +188,9 @@ const App: React.FC = () => {
       addLog(currentProblem.congratulation, 'success');
       await startTransitions();
     } else {
-      addLog("DETEKTERADE EN LOGISK GLITCH: Felaktig kod. Dekrypteringshjälp aktiverad:", 'error');
+      addLog("LOGISK GLITCH DETEKTERAD. Påbörjar nöd-dekryptering...", 'error');
       addLog(currentProblem.explanation, 'narrative');
-      addLog("Försök igen, Runner. Systemet räknar med dig.", 'system');
+      addLog("Försök igen, Runner.", 'system');
     }
 
     setIsLoading(false);
@@ -185,30 +204,61 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen p-4 md:p-10 flex flex-col items-center justify-center">
       <div className="w-full max-w-4xl h-[85vh] flex flex-col">
-        <header className="mb-4 flex flex-col gap-3 border-b border-green-900 pb-4">
-          <div className="flex justify-between items-end">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tighter text-green-400">PROCENT-PARADOXEN</h1>
-              <p className="text-xs text-green-700 uppercase tracking-tighter">USER_ACCESS: GRANTED | STATUS: INFILTRATING</p>
+        {/* HUD HEADER */}
+        <header className="mb-6 border-2 border-green-900 bg-black/80 p-5 rounded-lg shadow-[0_0_25px_rgba(0,100,0,0.3)] relative overflow-hidden">
+          <div className="flex flex-col md:flex-row justify-between items-stretch gap-6 relative z-10">
+            
+            {/* PROGRESS SECTION */}
+            <div className="flex-1 space-y-3">
+              <div className="flex justify-between items-end">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                  <h1 className="text-xl font-black tracking-tighter text-green-400 uppercase italic">Infiltration_OS</h1>
+                </div>
+                <div className="text-[10px] text-green-600 font-bold uppercase tracking-[0.2em]">
+                  Zone: <span className="text-white">{PROBLEMS[state.currentProblemIndex]?.roomName || 'CENTRAL CORE'}</span>
+                </div>
+              </div>
+
+              <div className="relative h-8 w-full bg-black border border-green-900 rounded-sm p-1">
+                <div 
+                  className="h-full bg-gradient-to-r from-green-900 via-green-500 to-green-300 shadow-[0_0_15px_rgba(0,255,0,0.4)] transition-all duration-1000 ease-in-out relative"
+                  style={{ width: `${progressPercentage}%` }}
+                >
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-[11px] font-black text-white mix-blend-difference tracking-[0.3em] uppercase">
+                    HACKING: {Math.round(progressPercentage)}%
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-yellow-500 uppercase">KRAFT: {state.score}</p>
-              <p className="text-xs text-green-800 uppercase font-bold tracking-widest">Sector: {PROBLEMS[state.currentProblemIndex]?.roomName || 'CORE'}</p>
+
+            {/* KRAFT SECTION WITH FLOATING INDICATORS */}
+            <div className="relative flex flex-col items-center justify-center min-w-[140px] bg-green-950/20 border border-green-900 rounded p-2">
+              <span className="text-[9px] text-green-700 font-bold uppercase tracking-[0.2em] mb-1">System_Kraft</span>
+              <div className="relative">
+                <span className={`text-4xl font-black tracking-tighter transition-all duration-300 ${isScorePulsing ? 'text-white scale-110' : 'text-yellow-500'}`}>
+                  {state.score}
+                </span>
+                
+                {/* FLOATING CHANGE INDICATOR */}
+                {scoreChange !== null && (
+                  <div className={`absolute -top-6 -right-4 font-black text-lg animate-bounce transition-opacity duration-1000 ${scoreChange > 0 ? 'text-green-400' : 'text-red-500'}`}>
+                    {scoreChange > 0 ? `+${scoreChange}` : scoreChange}
+                  </div>
+                )}
+              </div>
+              <div className="w-full h-1 bg-green-900 mt-2 rounded-full overflow-hidden">
+                <div className="h-full bg-yellow-600 w-full animate-pulse opacity-50"></div>
+              </div>
             </div>
           </div>
           
-          <div className="w-full space-y-1">
-            <div className="flex justify-between text-[10px] text-green-700 uppercase tracking-widest font-bold">
-              <span>Hacking-progress</span>
-              <span>{Math.round(progressPercentage)}%</span>
-            </div>
-            <div className="h-2 w-full bg-green-950 border border-green-900 rounded-full overflow-hidden p-[1px]">
-              <div 
-                className="h-full bg-gradient-to-r from-green-800 to-green-400 shadow-[0_0_10px_rgba(0,255,65,0.5)] transition-all duration-1000 ease-out"
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
-            </div>
-          </div>
+          {/* Visual decoration */}
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-green-500/20"></div>
+          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-green-500/20"></div>
         </header>
 
         <Terminal 
@@ -219,12 +269,20 @@ const App: React.FC = () => {
           hintLevel={state.currentHintLevel}
         />
 
-        <footer className="mt-4 text-[10px] text-green-900 flex justify-between uppercase tracking-widest font-bold">
-          <span>{state.isChoiceMode ? "Välj [A] eller [B]" : "Kommando: hämta ledtråd / hjælp"}</span>
-          <span>&copy; 2024 Logic-Runner Terminal</span>
-          <span className={isLoading ? "animate-pulse text-green-400" : ""}>
-            {isLoading ? "Processar..." : "System redo"}
-          </span>
+        <footer className="mt-4 px-2 text-[10px] text-green-900 flex justify-between uppercase tracking-[0.2em] font-black">
+          <div className="flex gap-6 items-center">
+            <span className="flex items-center gap-1">
+              <span className="w-1 h-1 bg-green-900 rounded-full"></span>
+              {state.isChoiceMode ? "STÄLLNINGSTAGANDE KRÄVS" : "DATA-INMATNING VÄNTAR"}
+            </span>
+            <span className="opacity-40 hidden md:inline">ENCRYPT: AES-256</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className={isLoading ? "text-green-400 animate-pulse" : ""}>
+              {isLoading ? "ÖVERFÖR_PAKET..." : "LÄNK_STABIL"}
+            </span>
+            <span className="text-green-950">V5.0.42</span>
+          </div>
         </footer>
       </div>
     </div>
