@@ -1,6 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 
+// Miljövariabeln process.env.API_KEY används direkt enligt säkerhetsföreskrifter.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 function cleanAIOutput(text: string): string {
