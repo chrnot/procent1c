@@ -7,9 +7,10 @@ interface TerminalProps {
   onInput: (value: string) => void;
   onHintRequest: () => void;
   disabled?: boolean;
+  hintLevel?: number;
 }
 
-const Terminal: React.FC<TerminalProps> = ({ logs, onInput, onHintRequest, disabled }) => {
+const Terminal: React.FC<TerminalProps> = ({ logs, onInput, onHintRequest, disabled, hintLevel = 0 }) => {
   const [inputValue, setInputValue] = React.useState('');
   const logEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,10 +36,15 @@ const Terminal: React.FC<TerminalProps> = ({ logs, onInput, onHintRequest, disab
       case 'system': return 'text-yellow-500 font-bold';
       case 'error': return 'text-red-500 animate-pulse';
       case 'success': return 'text-green-400 font-bold';
+      case 'choice': return 'text-cyan-400 font-bold border-l-2 border-cyan-800 pl-2 my-1';
       case 'input': return 'text-white opacity-75';
       default: return 'text-green-500';
     }
   };
+
+  const hintButtonText = hintLevel >= 3 
+    ? "[ LEDTRÅDAR SLUT ]" 
+    : `[ HÄMTA LEDTRÅD ${hintLevel + 1}/3 ]`;
 
   return (
     <div className="flex flex-col h-full bg-black border-2 border-green-900 p-4 shadow-[0_0_20px_rgba(0,255,65,0.2)] rounded-lg overflow-hidden relative">
@@ -65,15 +71,19 @@ const Terminal: React.FC<TerminalProps> = ({ logs, onInput, onHintRequest, disab
             disabled={disabled}
             autoFocus
             className="bg-transparent border-none outline-none flex-1 text-white caret-green-500 font-medium placeholder-green-900"
-            placeholder={disabled ? "Väntar på systemet..." : "Skriv ditt svar här..."}
+            placeholder={disabled ? "Väntar på systemet..." : "Skriv här..."}
           />
         </form>
         <button 
           onClick={onHintRequest}
-          disabled={disabled}
-          className="px-4 py-1 text-xs border border-yellow-700 text-yellow-500 hover:bg-yellow-900/20 transition-colors uppercase font-bold disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
+          disabled={disabled || hintLevel >= 3}
+          className={`px-4 py-1 text-xs border transition-colors uppercase font-bold disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap ${
+            hintLevel >= 3 
+              ? 'border-gray-800 text-gray-800' 
+              : 'border-yellow-700 text-yellow-500 hover:bg-yellow-900/20'
+          }`}
         >
-          [ Hämta Ledtråd ]
+          {hintButtonText}
         </button>
       </div>
       
